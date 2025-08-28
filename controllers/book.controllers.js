@@ -289,7 +289,7 @@ export const borrowBook = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: "Borrow success",
-      data: createBorrow
+      data: createBorrow,
     });
   } catch (err) {
     console.error("Error borrowing book:", err);
@@ -297,7 +297,64 @@ export const borrowBook = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "something went wrong",
-      errors: err.message
+      errors: err.message,
+    });
+  }
+};
+export const getAllBorrowSummary = async (req, res) => {
+  try {
+ 
+    // const borrows = await prisma.borrow.findMany({
+    //   where :{userId},
+    //   select : {
+    //     BorrowItems: {
+    //       select: {
+    //         quantity: true,
+    //         book: {
+    //           select : {
+    //             title : true
+    //           }
+    //         },
+    //       },
+    //     }
+    //   },
+     
+    // });
+
+     const groupedData = await prisma.borrowItems.groupBy({
+      by: ['bookId'],
+      _sum: {
+        quantity: true
+      }
+    });
+    const bookIds = groupedData.map(b => b.bookId);
+    const bookDetails = await prisma.book.findMany({
+      where : {id : {in : bookIds}}
+    });
+
+    const borrowedSummary = groupedData.map(book => {
+        const bookData = bookDetails.find(b => b.id === book.bookId);
+
+        return {
+          quantity : book._sum.quantity,
+          title :bookData.title,
+          isbn : bookData.isbn
+        }
+
+    })
+
+    return res.status(201).json({
+      success: true,
+      message: "Borrowed books summary retrieved successfully",
+      data: borrowedSummary
+    });
+  } catch (err) {
+    console.error("Error borrowing book:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "something went wrong",
+      errors: err.message,
     });
   }
 };
